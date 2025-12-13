@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		653AEE5A2EED5C2A00836DA1 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 653AEE592EED5C2A00836DA1 /* MWDATCamera */; };
+		653AEE5C2EED5C2A00836DA1 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = 653AEE5B2EED5C2A00836DA1 /* MWDATCore */; };
+		653AEE5E2EED5C2A00836DA1 /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 653AEE5D2EED5C2A00836DA1 /* MWDATMockDevice */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		653AEE3C2EED5BB500836DA1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				653AEE5A2EED5C2A00836DA1 /* MWDATCamera in Frameworks */,
+				653AEE5E2EED5C2A00836DA1 /* MWDATMockDevice in Frameworks */,
+				653AEE5C2EED5C2A00836DA1 /* MWDATCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +121,9 @@
 			);
 			name = "meta-stickers";
 			packageProductDependencies = (
+				653AEE592EED5C2A00836DA1 /* MWDATCamera */,
+				653AEE5B2EED5C2A00836DA1 /* MWDATCore */,
+				653AEE5D2EED5C2A00836DA1 /* MWDATMockDevice */,
 			);
 			productName = "meta-stickers";
 			productReference = 653AEE2C2EED5BB400836DA1 /* meta-stickers.app */;
@@ -195,6 +207,9 @@
 			);
 			mainGroup = 653AEE232EED5BB400836DA1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				653AEE582EED5C2A00836DA1 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 653AEE2D2EED5BB400836DA1 /* Products */;
 			projectDirPath = "";
@@ -399,12 +414,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XN9364SF28;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_FILE = "Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -431,12 +441,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XN9364SF28;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_FILE = "Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -578,6 +583,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		653AEE582EED5C2A00836DA1 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/meta-wearables-dat-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		653AEE592EED5C2A00836DA1 /* MWDATCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 653AEE582EED5C2A00836DA1 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCamera;
+		};
+		653AEE5B2EED5C2A00836DA1 /* MWDATCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 653AEE582EED5C2A00836DA1 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCore;
+		};
+		653AEE5D2EED5C2A00836DA1 /* MWDATMockDevice */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 653AEE582EED5C2A00836DA1 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATMockDevice;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 653AEE242EED5BB400836DA1 /* Project object */;
 }
