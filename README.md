@@ -118,29 +118,52 @@ meta-stickers/
 
 ## TODO / Next Steps
 
-### High Priority
+### High Priority - Sticker Features
 
-- [ ] Save segmented images to photo library
-- [ ] Multiple object tracking with different prompts
-- [ ] Bounding box visualization option
-- [ ] Confidence score threshold filtering
+- [ ] **Live Sticker Feed**: Real-time display of generated stickers as they're created
+- [ ] **Sticker Styles**: Multiple visual styles for stickers
+  - [ ] Classic cutout (transparent background)
+  - [ ] White border outline
+  - [ ] Drop shadow effect
+  - [ ] Cartoon/illustrated style
+  - [ ] Neon glow effect
+  - [ ] Vintage/retro filter
+  - [ ] Holographic/iridescent
+- [ ] **Sticker Sharing**: Share stickers via
+  - [ ] Messages/iMessage sticker pack
+  - [ ] AirDrop
+  - [ ] Social media (Instagram, TikTok, etc.)
+  - [ ] Copy to clipboard
+  - [ ] Save to Photos
+- [ ] **Better Segmentation Selection**:
+  - [ ] Tap-to-select object on screen
+  - [ ] Point prompt support (tap where you want to segment)
+  - [ ] Box prompt support (draw rectangle around object)
+  - [ ] Multi-object selection
+  - [ ] Refinement tools (add/remove from selection)
 
 ### Medium Priority
 
+- [ ] Sticker gallery/library to view all created stickers
+- [ ] Favorite stickers collection
+- [ ] Sticker packs organization
 - [ ] Video recording with segmentation overlay
 - [ ] Export segmentation masks as separate images
 - [ ] History of recent segmentations
 - [ ] Preset prompts (quick select common objects)
 - [ ] WebSocket real-time mode for lower latency
+- [ ] Undo/redo for sticker edits
 
 ### Low Priority / Future Ideas
 
 - [ ] On-device segmentation (Core ML) for offline use
-- [ ] Multi-mask support (segment multiple objects)
-- [ ] Custom mask colors and opacity
-- [ ] Share segmented images directly
+- [ ] Animated stickers (GIF export)
+- [ ] Sticker resizing and rotation
+- [ ] Text/emoji overlay on stickers
+- [ ] Sticker collage creation
 - [ ] AR object placement on segmented areas
-- [ ] Integration with other AI models (depth estimation, etc.)
+- [ ] Integration with other AI models (style transfer, background replacement)
+- [ ] iMessage sticker app extension
 
 ### Technical Improvements
 
@@ -150,6 +173,7 @@ meta-stickers/
 - [ ] Caching for repeated segmentation requests
 - [ ] Performance profiling and optimization
 - [ ] Support for iPad layout
+- [ ] Background processing for sticker generation
 
 ## API Reference
 
