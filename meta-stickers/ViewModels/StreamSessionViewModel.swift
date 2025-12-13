@@ -14,6 +14,30 @@ enum StreamingStatus {
     case stopped
 }
 
+enum StreamQuality: String, CaseIterable {
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+
+    var resolution: StreamingResolution {
+        switch self {
+        case .low: return .low
+        case .medium: return .medium
+        case .high: return .high
+        }
+    }
+}
+
+enum StreamFPS: UInt, CaseIterable {
+    case fps15 = 15
+    case fps24 = 24
+    case fps30 = 30
+
+    var displayName: String {
+        "\(rawValue) FPS"
+    }
+}
+
 @MainActor
 class StreamSessionViewModel: ObservableObject {
     @Published var currentVideoFrame: UIImage?
@@ -32,6 +56,10 @@ class StreamSessionViewModel: ObservableObject {
     @Published var capturedPhoto: UIImage?
     @Published var showPhotoPreview: Bool = false
 
+    // Stream settings
+    @Published var streamQuality: StreamQuality = .low
+    @Published var streamFPS: StreamFPS = .fps24
+
     // Segmentation
     let segmentationManager: SegmentationManager
 
@@ -42,60 +70,35 @@ class StreamSessionViewModel: ObservableObject {
     private var errorListenerToken: AnyListenerToken?
     private var photoDataListenerToken: AnyListenerToken?
     private let wearables: WearablesInterface
+    private let deviceSelector: AutoDeviceSelector
+
+    private var isSegmentationCapture = false
 
     init(wearables: WearablesInterface, falAPIKey: String? = nil) {
         self.wearables = wearables
         self.segmentationManager = SegmentationManager(apiKey: falAPIKey)
+        self.deviceSelector = AutoDeviceSelector(wearables: wearables)
 
-        let deviceSelector = AutoDeviceSelector(wearables: wearables)
+        // Use default values for initial config
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
-            resolution: StreamingResolution.low,
-            frameRate: 24)
+            resolution: StreamQuality.low.resolution,
+            frameRate: StreamFPS.fps24.rawValue)
         streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
-        stateListenerToken = streamSession.statePublisher.listen { [weak self] state in
+        setupListeners()
+
+        // Set up segmentation to request photo captures
+        segmentationManager.setPhotoCaptureCallback { [weak self] in
             Task { @MainActor [weak self] in
-                self?.updateStatusFromState(state)
+                self?.capturePhotoForSegmentation()
             }
         }
+    }
 
-        videoFrameListenerToken = streamSession.videoFramePublisher.listen { [weak self] videoFrame in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-
-                if let image = videoFrame.makeUIImage() {
-                    self.currentVideoFrame = image
-                    if !self.hasReceivedFirstFrame {
-                        self.hasReceivedFirstFrame = true
-                    }
-                    // Feed frame to segmentation manager
-                    self.segmentationManager.updateFrame(image)
-                }
-            }
-        }
-
-        errorListenerToken = streamSession.errorPublisher.listen { [weak self] error in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                let newErrorMessage = formatStreamingError(error)
-                if newErrorMessage != self.errorMessage {
-                    showError(newErrorMessage)
-                }
-            }
-        }
-
-        updateStatusFromState(streamSession.state)
-
-        photoDataListenerToken = streamSession.photoDataPublisher.listen { [weak self] photoData in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let uiImage = UIImage(data: photoData.data) {
-                    self.capturedPhoto = uiImage
-                    self.showPhotoPreview = true
-                }
-            }
-        }
+    private func capturePhotoForSegmentation() {
+        isSegmentationCapture = true
+        streamSession.capturePhoto(format: .jpeg)
     }
 
     func handleStartStreaming() async {
@@ -138,9 +141,93 @@ class StreamSessionViewModel: ObservableObject {
         remainingTime = 0
         stopTimer()
 
+        // Recreate stream session with current settings
+        recreateStreamSession()
+
         Task {
             await streamSession.start()
         }
+    }
+
+    func applyStreamSettings(quality: StreamQuality, fps: StreamFPS) {
+        let wasStreaming = isStreaming
+        streamQuality = quality
+        streamFPS = fps
+
+        if wasStreaming {
+            // Restart stream with new settings
+            Task {
+                await streamSession.stop()
+                recreateStreamSession()
+                await streamSession.start()
+            }
+        }
+    }
+
+    private func recreateStreamSession() {
+        // Clear existing listeners
+        stateListenerToken = nil
+        videoFrameListenerToken = nil
+        errorListenerToken = nil
+        photoDataListenerToken = nil
+
+        let config = StreamSessionConfig(
+            videoCodec: VideoCodec.raw,
+            resolution: streamQuality.resolution,
+            frameRate: streamFPS.rawValue)
+        streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
+
+        // Re-setup listeners
+        setupListeners()
+    }
+
+    private func setupListeners() {
+        stateListenerToken = streamSession.statePublisher.listen { [weak self] state in
+            Task { @MainActor [weak self] in
+                self?.updateStatusFromState(state)
+            }
+        }
+
+        videoFrameListenerToken = streamSession.videoFramePublisher.listen { [weak self] videoFrame in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+
+                if let image = videoFrame.makeUIImage() {
+                    self.currentVideoFrame = image
+                    if !self.hasReceivedFirstFrame {
+                        self.hasReceivedFirstFrame = true
+                    }
+                    self.segmentationManager.updateVideoFrame(image)
+                }
+            }
+        }
+
+        errorListenerToken = streamSession.errorPublisher.listen { [weak self] error in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let newErrorMessage = self.formatStreamingError(error)
+                if newErrorMessage != self.errorMessage {
+                    self.showError(newErrorMessage)
+                }
+            }
+        }
+
+        photoDataListenerToken = streamSession.photoDataPublisher.listen { [weak self] photoData in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let uiImage = UIImage(data: photoData.data) {
+                    if self.isSegmentationCapture {
+                        self.segmentationManager.onPhotoCaptured(uiImage)
+                        self.isSegmentationCapture = false
+                    } else {
+                        self.capturedPhoto = uiImage
+                        self.showPhotoPreview = true
+                    }
+                }
+            }
+        }
+
+        updateStatusFromState(streamSession.state)
     }
 
     private func showError(_ message: String) {

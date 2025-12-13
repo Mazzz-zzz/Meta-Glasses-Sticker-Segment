@@ -12,7 +12,7 @@ struct StreamView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color(.secondarySystemBackground)
                 .ignoresSafeArea()
 
             if let frame = viewModel.currentVideoFrame {
@@ -33,11 +33,11 @@ struct StreamView: View {
             } else {
                 VStack(spacing: 16) {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .primary))
                         .scaleEffect(1.5)
 
                     Text("Waiting for video stream...")
-                        .foregroundColor(.white)
+                        .foregroundColor(.secondary)
                         .font(.system(size: 14))
                 }
             }
@@ -49,15 +49,15 @@ struct StreamView: View {
                     if viewModel.segmentationManager.isEnabled {
                         HStack(spacing: 4) {
                             Circle()
-                                .fill(viewModel.segmentationManager.isProcessing ? Color.yellow : Color.green)
+                                .fill(viewModel.segmentationManager.isProcessing ? Color.orange : Color.green)
                                 .frame(width: 8, height: 8)
                             Text("SAM3")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.6))
+                        .background(.regularMaterial)
                         .cornerRadius(12)
                         .padding(.top, 16)
                         .padding(.leading, 16)
@@ -68,10 +68,10 @@ struct StreamView: View {
                     if viewModel.activeTimeLimit.isTimeLimited {
                         Text(viewModel.remainingTime.formattedCountdown)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.black.opacity(0.6))
+                            .background(.regularMaterial)
                             .cornerRadius(16)
                             .padding(.top, 16)
                             .padding(.trailing, 16)
@@ -84,7 +84,7 @@ struct StreamView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.red)
                         .padding(8)
-                        .background(Color.black.opacity(0.7))
+                        .background(.regularMaterial)
                         .cornerRadius(8)
                         .padding(.horizontal)
                 }
@@ -104,9 +104,6 @@ struct StreamView: View {
         }
         .sheet(isPresented: $showSegmentationSettings) {
             SegmentationSettingsView(segmentationManager: viewModel.segmentationManager)
-        }
-        .onDisappear {
-            viewModel.stopSession()
         }
     }
 }
@@ -183,6 +180,25 @@ struct SegmentationSettingsView: View {
                             Text("Disabled")
                                 .foregroundColor(.secondary)
                         }
+                    }
+                }
+
+                Section(header: Text("Image Source")) {
+                    Picker("Source", selection: $segmentationManager.source) {
+                        ForEach(SegmentationSource.allCases, id: \.self) { source in
+                            Text(source.rawValue).tag(source)
+                        }
+                    }
+                    .pickerStyle(.automatic)
+
+                    if segmentationManager.source == .videoFrame {
+                        Text("Uses video stream frames. Silent but lower quality.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Captures photos from camera. Higher quality but makes shutter sound.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 

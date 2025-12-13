@@ -12,7 +12,7 @@ struct NonStreamView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color(.systemBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
@@ -22,15 +22,15 @@ struct NonStreamView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 60, height: 60)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
 
                 Text("Ready to stream")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
 
                 Text("Stream live video from your Meta AI glasses")
                     .font(.system(size: 15))
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
@@ -44,10 +44,10 @@ struct NonStreamView: View {
                             .frame(width: 8, height: 8)
                         Text(wearablesVM.devices.isEmpty ? "No glasses connected" : "\(wearablesVM.devices.count) glasses connected")
                             .font(.system(size: 13))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .padding(.top, 8)
@@ -80,7 +80,7 @@ struct NonStreamView: View {
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 20))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .frame(width: 44, height: 44)
                 }
                 .padding(.bottom, 16)

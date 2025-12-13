@@ -17,7 +17,7 @@ struct MainAppView: View {
 
     var body: some View {
         if viewModel.registrationState == .registered || viewModel.hasMockDevice {
-            StreamSessionView(wearables: wearables, wearablesVM: viewModel)
+            TabContainerView(wearables: wearables, wearablesVM: viewModel)
         } else {
             HomeScreenView(viewModel: viewModel)
         }
