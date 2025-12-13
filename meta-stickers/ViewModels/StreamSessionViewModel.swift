@@ -92,6 +92,12 @@ class StreamSessionViewModel: ObservableObject {
     }
 
     func handleStartStreaming() async {
+        // Check if any devices are available
+        guard !wearables.devices.isEmpty else {
+            showError("No glasses connected. Please make sure your Meta AI glasses are paired and connected via Bluetooth.")
+            return
+        }
+
         let permission = Permission.camera
         do {
             let status = try await wearables.checkPermissionStatus(permission)
@@ -104,9 +110,19 @@ class StreamSessionViewModel: ObservableObject {
                 startSession()
                 return
             }
-            showError("Permission denied")
+            showError("Camera permission denied. Please grant camera access in your glasses settings.")
         } catch {
-            showError("Permission error: \(error.localizedDescription)")
+            // Provide helpful error message based on error description
+            let errorDesc = String(describing: error)
+            if errorDesc.contains("not registered") || errorDesc.contains("NotRegistered") {
+                showError("Not registered. Please connect your glasses first.")
+            } else if errorDesc.contains("not connected") || errorDesc.contains("NotConnected") {
+                showError("Glasses not connected. Please ensure your Meta AI glasses are connected via Bluetooth.")
+            } else if errorDesc.contains("denied") || errorDesc.contains("Denied") {
+                showError("Camera permission denied. Please grant camera access in your glasses settings.")
+            } else {
+                showError("Unable to start streaming. Please ensure your glasses are connected and try again.\n\nError: \(error.localizedDescription)")
+            }
         }
     }
 

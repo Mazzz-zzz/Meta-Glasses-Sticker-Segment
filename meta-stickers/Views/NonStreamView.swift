@@ -34,11 +34,30 @@ struct NonStreamView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
+                // Device connection status
+                Button {
+                    wearablesVM.refreshDevices()
+                } label: {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(wearablesVM.devices.isEmpty ? Color.orange : Color.green)
+                            .frame(width: 8, height: 8)
+                        Text(wearablesVM.devices.isEmpty ? "No glasses connected" : "\(wearablesVM.devices.count) glasses connected")
+                            .font(.system(size: 13))
+                            .foregroundColor(.gray)
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding(.top, 8)
+
                 Spacer()
 
                 CustomButton(
-                    title: "Start streaming",
-                    style: .primary
+                    title: wearablesVM.devices.isEmpty ? "Waiting for glasses..." : "Start streaming",
+                    style: .primary,
+                    isDisabled: wearablesVM.devices.isEmpty
                 ) {
                     Task {
                         await viewModel.handleStartStreaming()
@@ -71,6 +90,9 @@ struct NonStreamView: View {
             GettingStartedSheetView {
                 showGettingStartedSheet = false
             }
+        }
+        .onAppear {
+            wearablesVM.refreshDevices()
         }
     }
 }

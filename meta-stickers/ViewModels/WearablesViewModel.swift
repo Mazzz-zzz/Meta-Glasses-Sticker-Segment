@@ -30,6 +30,13 @@ class WearablesViewModel: ObservableObject {
         self.hasMockDevice = false
         self.registrationState = wearables.registrationState
 
+        // Start device stream immediately if already registered
+        if wearables.registrationState == .registered {
+            Task {
+                await setupDeviceStream()
+            }
+        }
+
         registrationTask = Task {
             for await registrationState in wearables.registrationStateStream() {
                 let previousState = self.registrationState
@@ -44,6 +51,14 @@ class WearablesViewModel: ObservableObject {
         }
     }
 
+    /// Refresh devices from the wearables interface
+    func refreshDevices() {
+        self.devices = wearables.devices
+        #if DEBUG
+        self.hasMockDevice = !MockDeviceKit.shared.pairedDevices.isEmpty
+        #endif
+    }
+
     deinit {
         registrationTask?.cancel()
         deviceStreamTask?.cancel()
@@ -53,6 +68,13 @@ class WearablesViewModel: ObservableObject {
         if let task = deviceStreamTask, !task.isCancelled {
             task.cancel()
         }
+
+        // Immediately update devices from current state before starting the stream
+        // The stream may not emit immediately, so we need to get the current state
+        self.devices = wearables.devices
+        #if DEBUG
+        self.hasMockDevice = !MockDeviceKit.shared.pairedDevices.isEmpty
+        #endif
 
         deviceStreamTask = Task {
             for await devices in wearables.devicesStream() {
