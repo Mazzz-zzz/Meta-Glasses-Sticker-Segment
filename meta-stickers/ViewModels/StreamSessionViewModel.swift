@@ -45,8 +45,8 @@ class StreamSessionViewModel: ObservableObject {
         let deviceSelector = AutoDeviceSelector(wearables: wearables)
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
-            resolution: StreamingResolution.low,
-            frameRate: 24)
+            resolution: StreamingResolution.high,
+            frameRate: 60)
         streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
         stateListenerToken = streamSession.statePublisher.listen { [weak self] state in

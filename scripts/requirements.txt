@@ -1,0 +1,10 @@
+# Model conversion dependencies
+ultralytics>=8.0.0
+coremltools>=7.0
+torch>=2.0.0
+transformers>=4.30.0
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# Optional: For MobileSAM conversion
+# pip install git+https://github.com/ChaoningZhang/MobileSAM.git
