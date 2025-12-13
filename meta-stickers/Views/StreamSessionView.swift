@@ -14,7 +14,10 @@ struct StreamSessionView: View {
     init(wearables: WearablesInterface, wearablesVM: WearablesViewModel) {
         self.wearables = wearables
         self.wearablesViewModel = wearablesVM
-        self._viewModel = StateObject(wrappedValue: StreamSessionViewModel(wearables: wearables))
+        self._viewModel = StateObject(wrappedValue: StreamSessionViewModel(
+            wearables: wearables,
+            falAPIKey: Config.falAPIKey
+        ))
     }
 
     var body: some View {

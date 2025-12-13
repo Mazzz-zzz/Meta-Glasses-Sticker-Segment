@@ -8,6 +8,7 @@ import SwiftUI
 struct StreamView: View {
     @ObservedObject var viewModel: StreamSessionViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
+    @State private var showSegmentationSettings = false
 
     var body: some View {
         ZStack {
@@ -15,9 +16,20 @@ struct StreamView: View {
                 .ignoresSafeArea()
 
             if let frame = viewModel.currentVideoFrame {
-                Image(uiImage: frame)
-                    .resizable()
-                    .scaledToFit()
+                ZStack {
+                    Image(uiImage: frame)
+                        .resizable()
+                        .scaledToFit()
+
+                    // Overlay segmentation mask if available
+                    if viewModel.segmentationManager.isEnabled,
+                       let maskImage = viewModel.segmentationManager.lastResult?.maskImage {
+                        Image(uiImage: maskImage)
+                            .resizable()
+                            .scaledToFit()
+                            .opacity(0.5)
+                    }
+                }
             } else {
                 VStack(spacing: 16) {
                     ProgressView()
@@ -31,9 +43,29 @@ struct StreamView: View {
             }
 
             VStack {
-                if viewModel.activeTimeLimit.isTimeLimited {
-                    HStack {
-                        Spacer()
+                // Top bar with time limit and segmentation status
+                HStack {
+                    // Segmentation status indicator
+                    if viewModel.segmentationManager.isEnabled {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(viewModel.segmentationManager.isProcessing ? Color.yellow : Color.green)
+                                .frame(width: 8, height: 8)
+                            Text("SAM3")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(12)
+                        .padding(.top, 16)
+                        .padding(.leading, 16)
+                    }
+
+                    Spacer()
+
+                    if viewModel.activeTimeLimit.isTimeLimited {
                         Text(viewModel.remainingTime.formattedCountdown)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
@@ -46,9 +78,20 @@ struct StreamView: View {
                     }
                 }
 
+                // Show error if segmentation fails
+                if let error = viewModel.segmentationManager.lastError {
+                    Text(error)
+                        .font(.system(size: 12))
+                        .foregroundColor(.red)
+                        .padding(8)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                }
+
                 Spacer()
 
-                ControlsView(viewModel: viewModel)
+                ControlsView(viewModel: viewModel, showSegmentationSettings: $showSegmentationSettings)
                     .padding(.bottom, 32)
             }
         }
@@ -59,6 +102,9 @@ struct StreamView: View {
                 }
             }
         }
+        .sheet(isPresented: $showSegmentationSettings) {
+            SegmentationSettingsView(segmentationManager: viewModel.segmentationManager)
+        }
         .onDisappear {
             viewModel.stopSession()
         }
@@ -67,6 +113,7 @@ struct StreamView: View {
 
 struct ControlsView: View {
     @ObservedObject var viewModel: StreamSessionViewModel
+    @Binding var showSegmentationSettings: Bool
 
     var body: some View {
         HStack(spacing: 24) {
@@ -78,8 +125,149 @@ struct ControlsView: View {
                 viewModel.cycleTimeLimit()
             }
 
+            CircleButton(
+                icon: viewModel.segmentationManager.isEnabled ? "wand.and.stars" : "wand.and.stars.inverse",
+                text: "SAM3"
+            ) {
+                if viewModel.segmentationManager.isEnabled {
+                    viewModel.segmentationManager.stop()
+                } else {
+                    viewModel.segmentationManager.start()
+                }
+            }
+            .onLongPressGesture {
+                showSegmentationSettings = true
+            }
+
             CircleButton(icon: "camera.fill") {
                 viewModel.capturePhoto()
+            }
+        }
+    }
+}
+
+struct SegmentationSettingsView: View {
+    @ObservedObject var segmentationManager: SegmentationManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var intervalText: String = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Segmentation")) {
+                    Toggle("Enable SAM3", isOn: Binding(
+                        get: { segmentationManager.isEnabled },
+                        set: { newValue in
+                            if newValue {
+                                segmentationManager.start()
+                            } else {
+                                segmentationManager.stop()
+                            }
+                        }
+                    ))
+
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        if segmentationManager.isProcessing {
+                            HStack(spacing: 4) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Processing")
+                                    .foregroundColor(.orange)
+                            }
+                        } else if segmentationManager.isEnabled {
+                            Text("Ready")
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Disabled")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("Polling Interval")) {
+                    HStack {
+                        Text("Interval (seconds)")
+                        Spacer()
+                        TextField("1.0", text: $intervalText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                            .onSubmit {
+                                if let interval = Double(intervalText) {
+                                    segmentationManager.setPollingInterval(interval)
+                                }
+                            }
+                    }
+
+                    HStack {
+                        Text("Quick Select")
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { segmentationManager.pollingInterval },
+                            set: { segmentationManager.setPollingInterval($0) }
+                        )) {
+                            Text("0.5s").tag(0.5)
+                            Text("1s").tag(1.0)
+                            Text("2s").tag(2.0)
+                            Text("5s").tag(5.0)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+
+                Section(header: Text("Prompt")) {
+                    TextField("object", text: Binding(
+                        get: { segmentationManager.currentPrompt },
+                        set: { segmentationManager.setPrompt($0) }
+                    ))
+
+                    Text("Examples: object, person, car, hand, face")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if let error = segmentationManager.lastError {
+                    Section(header: Text("Last Error")) {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+
+                if let result = segmentationManager.lastResult {
+                    Section(header: Text("Last Result")) {
+                        if let score = result.score {
+                            HStack {
+                                Text("Confidence")
+                                Spacer()
+                                Text(String(format: "%.2f", score))
+                            }
+                        }
+                        HStack {
+                            Text("Timestamp")
+                            Spacer()
+                            Text(result.timestamp, style: .time)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("SAM3 Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        // Apply any pending interval change
+                        if let interval = Double(intervalText), interval > 0 {
+                            segmentationManager.setPollingInterval(interval)
+                        }
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                intervalText = String(format: "%.1f", segmentationManager.pollingInterval)
             }
         }
     }

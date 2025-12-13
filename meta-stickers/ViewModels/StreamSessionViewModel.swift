@@ -32,6 +32,9 @@ class StreamSessionViewModel: ObservableObject {
     @Published var capturedPhoto: UIImage?
     @Published var showPhotoPreview: Bool = false
 
+    // Segmentation
+    let segmentationManager: SegmentationManager
+
     private var timerTask: Task<Void, Never>?
     private var streamSession: StreamSession
     private var stateListenerToken: AnyListenerToken?
@@ -40,8 +43,10 @@ class StreamSessionViewModel: ObservableObject {
     private var photoDataListenerToken: AnyListenerToken?
     private let wearables: WearablesInterface
 
-    init(wearables: WearablesInterface) {
+    init(wearables: WearablesInterface, falAPIKey: String? = nil) {
         self.wearables = wearables
+        self.segmentationManager = SegmentationManager(apiKey: falAPIKey)
+
         let deviceSelector = AutoDeviceSelector(wearables: wearables)
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
@@ -64,6 +69,8 @@ class StreamSessionViewModel: ObservableObject {
                     if !self.hasReceivedFirstFrame {
                         self.hasReceivedFirstFrame = true
                     }
+                    // Feed frame to segmentation manager
+                    self.segmentationManager.updateFrame(image)
                 }
             }
         }
@@ -143,6 +150,7 @@ class StreamSessionViewModel: ObservableObject {
 
     func stopSession() {
         stopTimer()
+        segmentationManager.stop()
         Task {
             await streamSession.stop()
         }
