@@ -1,0 +1,86 @@
+# Unit Tests CI Workflow for meta-stickers
+# Runs tests on push to main and pull requests
+
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
+      - name: Run Tests
+        run: |
+          xcodebuild test \
+            -project meta-stickers.xcodeproj \
+            -scheme meta-stickers \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.2' \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults \
+            | xcpretty --color --report junit
+        continue-on-error: false
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults
+          retention-days: 7
+
+  # Optional: Code coverage reporting
+  coverage:
+    name: Code Coverage
+    runs-on: macos-14
+    needs: test
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app
+
+      - name: Run Tests with Coverage
+        run: |
+          xcodebuild test \
+            -project meta-stickers.xcodeproj \
+            -scheme meta-stickers \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.2' \
+            -enableCodeCoverage YES \
+            -derivedDataPath DerivedData
+
+      - name: Generate Coverage Report
+        run: |
+          xcrun llvm-cov report \
+            DerivedData/Build/Products/Debug-iphonesimulator/meta-stickersTests.xctest/meta-stickersTests \
+            -instr-profile DerivedData/Build/ProfileData/*/Coverage.profdata \
+            --ignore-filename-regex='.*Tests.*' \
+            > coverage-report.txt || true
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage-report.txt
+          retention-days: 7

@@ -8,10 +8,22 @@
 import Testing
 @testable import meta_stickers
 
-struct meta_stickersTests {
+/// Root test suite for meta-stickers app
+///
+/// Test organization:
+/// - Models/: Tests for SwiftData models (Sticker, StickerCollection, AppSettings)
+/// - Services/: Tests for business logic services (StickerDataManager, FalAIService, SegmentationManager)
+/// - ViewModels/: Tests for view models (StreamSessionViewModel)
+/// - Utilities/: Tests for utility functions (Image processing)
+/// - Integration/: End-to-end flow tests
+/// - Helpers/: Test utilities and fixtures
+/// - Mocks/: Mock implementations for testing
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+@Suite("Meta Stickers Tests")
+struct MetaStickersTests {
+
+    @Test("Test infrastructure is working")
+    func testInfrastructure_isWorking() {
+        #expect(true)
     }
-
 }
