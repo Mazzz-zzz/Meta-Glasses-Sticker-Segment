@@ -57,8 +57,8 @@ class StreamSessionViewModel: ObservableObject {
     @Published var showPhotoPreview: Bool = false
 
     // Stream settings
-    @Published var streamQuality: StreamQuality = .low
-    @Published var streamFPS: StreamFPS = .fps24
+    @Published var streamQuality: StreamQuality = .high
+    @Published var streamFPS: StreamFPS = .fps30
 
     // Segmentation
     let segmentationManager: SegmentationManager
@@ -84,8 +84,8 @@ class StreamSessionViewModel: ObservableObject {
         // Use default values for initial config
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
-            resolution: StreamQuality.low.resolution,
-            frameRate: StreamFPS.fps24.rawValue)
+            resolution: StreamQuality.high.resolution,
+            frameRate: StreamFPS.fps30.rawValue)
         streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
         setupListeners()

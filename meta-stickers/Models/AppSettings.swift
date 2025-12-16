@@ -75,14 +75,14 @@ final class AppSettings {
 
         // Segmentation defaults
         self.segmentationEnabled = false
-        self.pollingInterval = 1.0
-        self.currentPrompt = "object"
-        self.segmentationPrompts = ["object", "person", "face", "hand"]
+        self.pollingInterval = 5.0
+        self.currentPrompt = "phone"
+        self.segmentationPrompts = ["phone", "person", "face", "hand"]
         self.segmentationSource = "videoFrame"
 
         // Stream defaults
-        self.streamQuality = "low"
-        self.streamFPS = 24
+        self.streamQuality = "high"
+        self.streamFPS = 30
 
         // UI defaults
         self.gridColumns = 3
