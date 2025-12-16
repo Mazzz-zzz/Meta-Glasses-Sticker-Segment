@@ -73,16 +73,20 @@ struct TabContainerView: View {
                     Picker("Tab", selection: $selectedTab) {
                         ForEach(AppTab.allCases, id: \.self) { tab in
                             if let icon = tab.icon {
-                                Image(systemName: icon).tag(tab)
+                                Image(systemName: icon)
+                                    .tag(tab)
+                                    .accessibilityIdentifier("tab_\(tab.rawValue)")
                             } else {
                                 Text(tab.rawValue)
                                     .font(.caption)
                                     .tag(tab)
+                                    .accessibilityIdentifier("tab_\(tab.rawValue)")
                             }
                         }
                     }
                     .pickerStyle(.segmented)
                     .fixedSize()
+                    .accessibilityIdentifier("tabPicker")
                 }
             }
             .toolbarBackground(.visible, for: .navigationBar)

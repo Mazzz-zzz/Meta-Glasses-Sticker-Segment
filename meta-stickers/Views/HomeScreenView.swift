@@ -62,6 +62,7 @@ struct HomeScreenView: View {
                 ) {
                     viewModel.connectGlasses()
                 }
+                .accessibilityIdentifier("connectGlassesButton")
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
