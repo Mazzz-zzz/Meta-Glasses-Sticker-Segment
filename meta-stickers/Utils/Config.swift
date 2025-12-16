@@ -7,20 +7,14 @@ import Foundation
 
 enum Config {
     /// FAL AI API Key
-    /// Priority: Secrets.swift > Environment variable > Info.plist
+    /// Priority: Environment variable > Info.plist
     static var falAPIKey: String? {
-        // First try Secrets.swift (gitignored)
-        let secretsKey = Secrets.falAPIKey
-        if secretsKey != "YOUR_FAL_API_KEY_HERE" && !secretsKey.isEmpty {
-            return secretsKey
-        }
-
-        // Then try environment variable
+        // Try environment variable
         if let envKey = ProcessInfo.processInfo.environment["FAL_KEY"], !envKey.isEmpty {
             return envKey
         }
 
-        // Finally try Info.plist
+        // Fallback to Info.plist
         if let plistKey = Bundle.main.infoDictionary?["FAL_KEY"] as? String, !plistKey.isEmpty {
             return plistKey
         }
