@@ -22,6 +22,9 @@ final class AppSettings {
     /// Current segmentation prompt
     var currentPrompt: String
 
+    /// Saved segmentation prompts (chips)
+    var segmentationPrompts: [String]
+
     /// Segmentation source: "videoFrame" or "photoCapture"
     var segmentationSource: String
 
@@ -74,6 +77,7 @@ final class AppSettings {
         self.segmentationEnabled = false
         self.pollingInterval = 1.0
         self.currentPrompt = "object"
+        self.segmentationPrompts = ["object", "person", "face", "hand"]
         self.segmentationSource = "videoFrame"
 
         // Stream defaults

@@ -9,9 +9,17 @@ import SwiftData
 
 enum AppTab: String, CaseIterable {
     case stream = "Stream"
+    case cutout = "Cutout"
     case style = "Style"
     case library = "Library"
     case settings = "Settings"
+
+    var icon: String? {
+        switch self {
+        case .settings: return "gearshape"
+        default: return nil
+        }
+    }
 }
 
 struct TabContainerView: View {
@@ -43,6 +51,11 @@ struct TabContainerView: View {
                     .opacity(selectedTab == .stream ? 1 : 0)
                     .allowsHitTesting(selectedTab == .stream)
 
+                CutoutTabContent(appSettings: appSettings, segmentationManager: streamViewModel.segmentationManager)
+                    .opacity(selectedTab == .cutout ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .cutout)
+                    .id("cutout-\(streamViewModel.segmentationManager.currentPrompt)")
+
                 StyleTabContent(appSettings: appSettings, segmentationManager: streamViewModel.segmentationManager)
                     .opacity(selectedTab == .style ? 1 : 0)
                     .allowsHitTesting(selectedTab == .style)
@@ -59,7 +72,13 @@ struct TabContainerView: View {
                 ToolbarItem(placement: .principal) {
                     Picker("Tab", selection: $selectedTab) {
                         ForEach(AppTab.allCases, id: \.self) { tab in
-                            Text(tab.rawValue).tag(tab)
+                            if let icon = tab.icon {
+                                Image(systemName: icon).tag(tab)
+                            } else {
+                                Text(tab.rawValue)
+                                    .font(.caption)
+                                    .tag(tab)
+                            }
                         }
                     }
                     .pickerStyle(.segmented)
@@ -556,3 +575,135 @@ struct StylePresetButton: View {
         }
     }
 }
+
+// MARK: - Cutout Tab Content
+struct CutoutTabContent: View {
+    var appSettings: AppSettings?
+    @ObservedObject var segmentationManager: SegmentationManager
+    @State private var newPrompt: String = ""
+
+    private var prompts: [String] {
+        appSettings?.segmentationPrompts ?? []
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Current selection header
+            VStack(spacing: 4) {
+                Text("DETECTING")
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(.secondary)
+                    .tracking(1)
+
+                Text(segmentationManager.currentPrompt.isEmpty ? "Nothing" : segmentationManager.currentPrompt)
+                    .font(.title.weight(.semibold))
+                    .foregroundColor(.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(Color(.systemBackground))
+
+            Divider()
+
+            // Chips grid
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], spacing: 10) {
+                    ForEach(prompts, id: \.self) { prompt in
+                        let isSelected = prompt == segmentationManager.currentPrompt
+                        HStack(spacing: 0) {
+                            Button {
+                                selectPrompt(prompt)
+                            } label: {
+                                Text(prompt)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundColor(isSelected ? .white : .primary)
+                                    .padding(.leading, 14)
+                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                deletePrompt(prompt)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(isSelected ? Color.accentColor : Color(.secondarySystemBackground))
+                        )
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+
+            Divider()
+
+            // Add new prompt
+            HStack(spacing: 12) {
+                TextField("New prompt...", text: $newPrompt)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(10)
+                    .submitLabel(.done)
+                    .onSubmit { addPrompt() }
+
+                Button(action: addPrompt) {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(newPrompt.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray : Color.accentColor)
+                        .cornerRadius(10)
+                }
+                .disabled(newPrompt.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+        }
+    }
+
+    private func addPrompt() {
+        let trimmed = newPrompt.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else {
+            newPrompt = ""
+            return
+        }
+        guard !(appSettings?.segmentationPrompts.contains(trimmed) ?? false) else {
+            newPrompt = ""
+            return
+        }
+
+        appSettings?.segmentationPrompts.append(trimmed)
+        newPrompt = ""
+    }
+
+    private func selectPrompt(_ prompt: String) {
+        segmentationManager.setPrompt(prompt)
+        appSettings?.currentPrompt = prompt
+    }
+
+    private func deletePrompt(_ prompt: String) {
+        appSettings?.segmentationPrompts.removeAll { $0 == prompt }
+
+        // If deleted the current prompt, select first available
+        if segmentationManager.currentPrompt == prompt {
+            if let first = appSettings?.segmentationPrompts.first {
+                selectPrompt(first)
+            } else {
+                segmentationManager.setPrompt("")
+                appSettings?.currentPrompt = ""
+            }
+        }
+    }
+}
+
