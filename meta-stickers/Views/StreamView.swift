@@ -17,13 +17,15 @@ struct StreamView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Compact video preview at the top
+                // Video preview at the top
                 VideoPreviewSection(viewModel: viewModel)
 
-                // Divider
+                // Divider with padding
                 Rectangle()
                     .fill(Color(.separator))
                     .frame(height: 1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
 
                 // Live Sticker Feed
                 LiveStickerFeedView(segmentationManager: viewModel.segmentationManager)
@@ -124,11 +126,12 @@ struct VideoPreviewSection: View {
                     }
                 }
             }
-            .frame(width: 160, height: 90) // 16:9 aspect ratio, compact size
-            .cornerRadius(8)
+            .frame(width: 280, height: 158) // 16:9 aspect ratio
+            .cornerRadius(12)
             Spacer()
         }
-        .padding(.top, 8)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
     }
 }
 
