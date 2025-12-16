@@ -10,16 +10,8 @@ import MWDATCore
 import SwiftUI
 import SwiftData
 
-#if DEBUG
-import MWDATMockDevice
-#endif
-
 @main
 struct meta_stickersApp: App {
-    #if DEBUG
-    @StateObject private var debugMenuViewModel = DebugMenuViewModel(mockDeviceKit: MockDeviceKit.shared)
-    #endif
-
     private let wearables: WearablesInterface
     @StateObject private var wearablesViewModel: WearablesViewModel
 
@@ -65,14 +57,6 @@ struct meta_stickersApp: App {
                 } message: {
                     Text(wearablesViewModel.errorMessage)
                 }
-                #if DEBUG
-                .sheet(isPresented: $debugMenuViewModel.showDebugMenu) {
-                    MockDeviceDebugView(mockDeviceKit: debugMenuViewModel.mockDeviceKit)
-                }
-                .overlay {
-                    DebugMenuView(debugMenuViewModel: debugMenuViewModel)
-                }
-                #endif
 
             RegistrationView(viewModel: wearablesViewModel)
         }
