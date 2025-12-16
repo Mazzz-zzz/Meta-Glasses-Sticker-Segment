@@ -270,31 +270,44 @@ struct ControlsView: View {
     @Binding var showSegmentationSettings: Bool
 
     var body: some View {
-        HStack(spacing: 24) {
-            CircleButton(icon: "xmark", text: "Stop") {
+        HStack(spacing: 32) {
+            // Stop button - red
+            Button(action: {
                 viewModel.stopSession()
+            }) {
+                VStack(spacing: 2) {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 14))
+                    Text("Stop")
+                        .font(.system(size: 10, weight: .medium))
+                }
             }
+            .foregroundColor(.white)
+            .frame(width: 56, height: 56)
+            .background(Color.red)
+            .clipShape(Circle())
 
-            CircleButton(icon: "timer", text: viewModel.activeTimeLimit.displayText) {
-                viewModel.cycleTimeLimit()
-            }
-
-            CircleButton(
-                icon: viewModel.segmentationManager.isEnabled ? "wand.and.stars" : "wand.and.stars.inverse",
-                text: "SAM3"
-            ) {
+            // Live Stickers button - wide pill shape
+            Button(action: {
                 if viewModel.segmentationManager.isEnabled {
                     viewModel.segmentationManager.stop()
                 } else {
                     viewModel.segmentationManager.start()
                 }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: viewModel.segmentationManager.isEnabled ? "wand.and.stars" : "wand.and.stars.inverse")
+                        .font(.system(size: 18, weight: .medium))
+                    Text("Live Stickers")
+                        .font(.system(size: 14, weight: .semibold))
+                }
             }
+            .foregroundColor(.white)
+            .frame(width: 180, height: 56)
+            .background(Color.blue)
+            .clipShape(Capsule())
             .onLongPressGesture {
                 showSegmentationSettings = true
-            }
-
-            CircleButton(icon: "camera.fill") {
-                viewModel.capturePhoto()
             }
         }
     }
