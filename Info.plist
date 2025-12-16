@@ -27,7 +27,7 @@
 			<string>com.meta.wearables.callback</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>metastickers</string>
+				<string>autostickers</string>
 			</array>
 		</dict>
 	</array>
@@ -40,7 +40,7 @@
 	<key>MWDAT</key>
 	<dict>
 		<key>AppLinkURLScheme</key>
-		<string>metastickers://</string>
+		<string>autostickers://</string>
 		<key>MetaAppID</key>
 		<string>0</string>
 	</dict>
