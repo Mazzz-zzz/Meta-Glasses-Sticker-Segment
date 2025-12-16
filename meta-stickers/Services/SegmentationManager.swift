@@ -36,6 +36,10 @@ class SegmentationManager: ObservableObject {
     @Published var autoSaveEnabled: Bool = true
     private var dataManager: StickerDataManager?
 
+    // Style processing
+    private let styleProcessor = StickerStyleProcessor()
+    private var styleSettings: StickerStyleSettings = .default
+
     private let maxStickerHistory = 50 // Keep last 50 stickers
 
     private let falService: FalAIService
@@ -47,6 +51,11 @@ class SegmentationManager: ObservableObject {
     init(apiKey: String? = nil, dataManager: StickerDataManager? = nil) {
         self.falService = FalAIService(apiKey: apiKey)
         self.dataManager = dataManager
+    }
+
+    /// Updates the style settings used when processing stickers
+    func updateStyleSettings(from appSettings: AppSettings?) {
+        self.styleSettings = StickerStyleSettings(from: appSettings)
     }
 
     /// Sets the data manager for persisting stickers
@@ -150,11 +159,15 @@ class SegmentationManager: ObservableObject {
             if let maskInfo = response.masks?.first ?? response.image {
                 print("[SAM3] Downloading mask from: \(maskInfo.url)")
                 do {
-                    let maskImage = try await falService.downloadImage(from: maskInfo.url)
+                    let rawMaskImage = try await falService.downloadImage(from: maskInfo.url)
                     print("[SAM3] Mask downloaded successfully")
 
+                    // Apply style settings to the sticker
+                    let styledImage = styleProcessor.applyStyle(to: rawMaskImage, settings: styleSettings)
+                    print("[SAM3] Style applied: \(styleSettings.style.rawValue)")
+
                     let result = SegmentationResult(
-                        maskImage: maskImage,
+                        maskImage: styledImage,
                         maskURL: maskInfo.url,
                         score: response.scores?.first,
                         boundingBox: response.boxes?.first,
@@ -171,10 +184,10 @@ class SegmentationManager: ObservableObject {
                     }
                     print("[SAM3] Sticker added to history. Total: \(stickerHistory.count)")
 
-                    // Auto-save to database if enabled
+                    // Auto-save to database if enabled (save styled image)
                     if autoSaveEnabled, let dataManager = dataManager {
                         if let savedSticker = dataManager.saveSticker(
-                            image: maskImage,
+                            image: styledImage,
                             prompt: currentPrompt,
                             score: response.scores?.first,
                             boundingBox: response.boxes?.first

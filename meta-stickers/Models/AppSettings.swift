@@ -122,6 +122,7 @@ final class AppSettings {
     enum StickerStyle: String, CaseIterable {
         case `default` = "default"
         case outlined = "outlined"
+        case gpuOutline = "gpuOutline"
         case cartoon = "cartoon"
         case minimal = "minimal"
         case glossy = "glossy"
@@ -131,6 +132,7 @@ final class AppSettings {
             switch self {
             case .default: return "Default"
             case .outlined: return "Outlined"
+            case .gpuOutline: return "Smooth Edge"
             case .cartoon: return "Cartoon"
             case .minimal: return "Minimal"
             case .glossy: return "Glossy"
@@ -142,11 +144,17 @@ final class AppSettings {
             switch self {
             case .default: return "Clean cutout with subtle shadow"
             case .outlined: return "White border around the sticker"
+            case .gpuOutline: return "GPU-accelerated smooth outline"
             case .cartoon: return "Bold colors with thick outline"
             case .minimal: return "Simple, no effects"
             case .glossy: return "Shiny highlight effect"
             case .vintage: return "Faded colors with worn edges"
             }
+        }
+
+        /// Whether this style uses GPU-accelerated border
+        var usesGPUBorder: Bool {
+            self == .gpuOutline
         }
     }
 

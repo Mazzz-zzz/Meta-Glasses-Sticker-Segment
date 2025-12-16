@@ -43,7 +43,7 @@ struct TabContainerView: View {
                     .opacity(selectedTab == .stream ? 1 : 0)
                     .allowsHitTesting(selectedTab == .stream)
 
-                StyleTabContent(appSettings: appSettings)
+                StyleTabContent(appSettings: appSettings, segmentationManager: streamViewModel.segmentationManager)
                     .opacity(selectedTab == .style ? 1 : 0)
                     .allowsHitTesting(selectedTab == .style)
 
@@ -100,6 +100,9 @@ struct TabContainerView: View {
         } else {
             segManager.source = .videoFrame
         }
+
+        // Apply style settings
+        segManager.updateStyleSettings(from: settings)
 
         print("[Settings] Loaded from TabContainer")
     }
@@ -323,43 +326,22 @@ struct SettingsTabContent: View {
 // MARK: - Style Tab Content
 struct StyleTabContent: View {
     var appSettings: AppSettings?
+    var segmentationManager: SegmentationManager?
     @State private var selectedStyle: AppSettings.StickerStyle = .default
-    @State private var borderWidth: Double = 0.0
-    @State private var shadowEnabled: Bool = true
-    @State private var shadowOpacity: Double = 0.3
-    @State private var cornerRounding: Double = 0.0
-    @State private var backgroundStyle: AppSettings.BackgroundStyle = .transparent
 
     var body: some View {
         VStack(spacing: 0) {
             // Fixed Preview at top
-            StylePreviewSection(
-                selectedStyle: selectedStyle,
-                borderWidth: borderWidth,
-                shadowEnabled: shadowEnabled,
-                shadowOpacity: shadowOpacity,
-                cornerRounding: cornerRounding
-            )
+            StylePreviewSection(selectedStyle: selectedStyle)
             .padding(.horizontal)
-            .padding(.top)
-            .padding(.bottom, 8)
+            .padding(.vertical, 8)
             .background(Color(.systemGroupedBackground))
 
             // Scrollable content below
             ScrollView {
                 VStack(spacing: 16) {
                     // Style Presets
-                    StylePresetsSection(selectedStyle: $selectedStyle, appSettings: appSettings)
-
-                    // Custom Adjustments
-                    CustomAdjustmentsSection(
-                        borderWidth: $borderWidth,
-                        shadowEnabled: $shadowEnabled,
-                        shadowOpacity: $shadowOpacity,
-                        cornerRounding: $cornerRounding,
-                        backgroundStyle: $backgroundStyle,
-                        appSettings: appSettings
-                    )
+                    StylePresetsSection(selectedStyle: $selectedStyle, appSettings: appSettings, onStyleChange: updateSegmentationStyle)
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
@@ -374,21 +356,16 @@ struct StyleTabContent: View {
     private func loadSettings() {
         guard let settings = appSettings else { return }
         selectedStyle = AppSettings.StickerStyle(rawValue: settings.stickerStyle) ?? .default
-        borderWidth = settings.borderWidth
-        shadowEnabled = settings.shadowEnabled
-        shadowOpacity = settings.shadowOpacity
-        cornerRounding = settings.cornerRounding
-        backgroundStyle = AppSettings.BackgroundStyle(rawValue: settings.backgroundStyle) ?? .transparent
+    }
+
+    private func updateSegmentationStyle() {
+        segmentationManager?.updateStyleSettings(from: appSettings)
     }
 }
 
 // MARK: - Style Preview Section
 struct StylePreviewSection: View {
     let selectedStyle: AppSettings.StickerStyle
-    let borderWidth: Double
-    let shadowEnabled: Bool
-    let shadowOpacity: Double
-    let cornerRounding: Double
 
     var body: some View {
         VStack(spacing: 12) {
@@ -414,18 +391,7 @@ struct StylePreviewSection: View {
                         )
                 }
                 .padding(30)
-                .background(
-                    RoundedRectangle(cornerRadius: 12 + CGFloat(cornerRounding * 20))
-                        .fill(.white)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12 + CGFloat(cornerRounding * 20))
-                                .stroke(Color.black, lineWidth: CGFloat(borderWidth))
-                        )
-                        .shadow(
-                            color: shadowEnabled ? .black.opacity(shadowOpacity) : .clear,
-                            radius: 8, x: 0, y: 4
-                        )
-                )
+                .modifier(StylePreviewModifier(style: selectedStyle))
             }
             .frame(height: 180)
             .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -442,10 +408,81 @@ struct StylePreviewSection: View {
     }
 }
 
+// MARK: - Style Preview Modifier
+struct StylePreviewModifier: ViewModifier {
+    let style: AppSettings.StickerStyle
+
+    func body(content: Content) -> some View {
+        switch style {
+        case .default:
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.white)
+                        .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+                )
+        case .outlined, .gpuOutline:
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.white)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white, lineWidth: 4)
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                )
+        case .cartoon:
+            content
+                .saturation(1.3)
+                .contrast(1.2)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.white)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.black, lineWidth: 3)
+                        )
+                )
+        case .minimal:
+            content
+                .saturation(0.9)
+        case .glossy:
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.white)
+                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [.white.opacity(0.4), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .center
+                            )
+                        )
+                        .padding(30)
+                )
+        case .vintage:
+            content
+                .saturation(0.7)
+                .contrast(0.9)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(white: 0.95))
+                        .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                )
+        }
+    }
+}
+
 // MARK: - Style Presets Section
 struct StylePresetsSection: View {
     @Binding var selectedStyle: AppSettings.StickerStyle
     var appSettings: AppSettings?
+    var onStyleChange: (() -> Void)?
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -467,6 +504,7 @@ struct StylePresetsSection: View {
                     ) {
                         selectedStyle = style
                         appSettings?.stickerStyle = style.rawValue
+                        onStyleChange?()
                     }
                 }
             }
@@ -510,108 +548,11 @@ struct StylePresetButton: View {
         switch style {
         case .default: return "sparkles"
         case .outlined: return "square.dashed"
+        case .gpuOutline: return "cpu"
         case .cartoon: return "paintbrush.fill"
         case .minimal: return "minus.circle"
         case .glossy: return "light.max"
         case .vintage: return "camera.filters"
         }
-    }
-}
-
-// MARK: - Custom Adjustments Section
-struct CustomAdjustmentsSection: View {
-    @Binding var borderWidth: Double
-    @Binding var shadowEnabled: Bool
-    @Binding var shadowOpacity: Double
-    @Binding var cornerRounding: Double
-    @Binding var backgroundStyle: AppSettings.BackgroundStyle
-    var appSettings: AppSettings?
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("Custom Adjustments")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Border Width
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Border Width")
-                        .font(.subheadline)
-                    Spacer()
-                    Text(borderWidth == 0 ? "None" : String(format: "%.0fpx", borderWidth))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                Slider(value: $borderWidth, in: 0...10, step: 1)
-                    .onChange(of: borderWidth) { _, newValue in
-                        appSettings?.borderWidth = newValue
-                    }
-            }
-
-            Divider()
-
-            // Shadow
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle("Shadow", isOn: $shadowEnabled)
-                    .onChange(of: shadowEnabled) { _, newValue in
-                        appSettings?.shadowEnabled = newValue
-                    }
-
-                if shadowEnabled {
-                    HStack {
-                        Text("Opacity")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Slider(value: $shadowOpacity, in: 0...1, step: 0.1)
-                            .onChange(of: shadowOpacity) { _, newValue in
-                                appSettings?.shadowOpacity = newValue
-                            }
-                        Text(String(format: "%.0f%%", shadowOpacity * 100))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .frame(width: 40)
-                    }
-                }
-            }
-
-            Divider()
-
-            // Corner Rounding
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Corner Rounding")
-                        .font(.subheadline)
-                    Spacer()
-                    Text(cornerRounding == 0 ? "Sharp" : cornerRounding == 1 ? "Round" : String(format: "%.0f%%", cornerRounding * 100))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                Slider(value: $cornerRounding, in: 0...1, step: 0.1)
-                    .onChange(of: cornerRounding) { _, newValue in
-                        appSettings?.cornerRounding = newValue
-                    }
-            }
-
-            Divider()
-
-            // Background Style
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Background")
-                    .font(.subheadline)
-                Picker("Background", selection: $backgroundStyle) {
-                    ForEach(AppSettings.BackgroundStyle.allCases, id: \.self) { style in
-                        Text(style.displayName).tag(style)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: backgroundStyle) { _, newValue in
-                    appSettings?.backgroundStyle = newValue.rawValue
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
     }
 }
