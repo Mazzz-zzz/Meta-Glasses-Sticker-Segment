@@ -7,7 +7,8 @@ import Foundation
 import UIKit
 import Combine
 
-struct SegmentationResult {
+struct SegmentationResult: Identifiable {
+    let id = UUID()
     let maskImage: UIImage?
     let maskURL: String?
     let score: Float?
@@ -29,6 +30,13 @@ class SegmentationManager: ObservableObject {
     @Published var lastError: String?
     @Published var isProcessing: Bool = false
     @Published var source: SegmentationSource = .videoFrame // Default to silent
+    @Published var stickerHistory: [SegmentationResult] = []
+
+    // Database integration
+    @Published var autoSaveEnabled: Bool = true
+    private var dataManager: StickerDataManager?
+
+    private let maxStickerHistory = 50 // Keep last 50 stickers
 
     private let falService: FalAIService
     private var pollingTask: Task<Void, Never>?
@@ -36,8 +44,14 @@ class SegmentationManager: ObservableObject {
     private var latestVideoFrame: UIImage?
     private var photoCaptureCallback: (() -> Void)?
 
-    init(apiKey: String? = nil) {
+    init(apiKey: String? = nil, dataManager: StickerDataManager? = nil) {
         self.falService = FalAIService(apiKey: apiKey)
+        self.dataManager = dataManager
+    }
+
+    /// Sets the data manager for persisting stickers
+    func setDataManager(_ manager: StickerDataManager) {
+        self.dataManager = manager
     }
 
     /// Set callback to request photo capture from the camera
@@ -65,6 +79,10 @@ class SegmentationManager: ObservableObject {
     func stop() {
         isEnabled = false
         stopPolling()
+    }
+
+    func clearHistory() {
+        stickerHistory.removeAll()
     }
 
     func setPollingInterval(_ interval: TimeInterval) {
@@ -116,29 +134,66 @@ class SegmentationManager: ObservableObject {
     }
 
     private func processImage(_ image: UIImage?) async {
-        guard let image = image, !isProcessing else { return }
+        guard let image = image, !isProcessing else {
+            print("[SAM3] Skipping - no image or request in progress")
+            return
+        }
 
         isProcessing = true
         defer { isProcessing = false }
 
         do {
+            print("[SAM3] Sending image to FAL API...")
             let response = try await falService.segment(image: image, prompt: currentPrompt)
+            print("[SAM3] Response received - masks: \(response.masks?.count ?? 0), image: \(response.image != nil)")
 
             if let maskInfo = response.masks?.first ?? response.image {
-                let maskImage = try? await falService.downloadImage(from: maskInfo.url)
+                print("[SAM3] Downloading mask from: \(maskInfo.url)")
+                do {
+                    let maskImage = try await falService.downloadImage(from: maskInfo.url)
+                    print("[SAM3] Mask downloaded successfully")
 
-                lastResult = SegmentationResult(
-                    maskImage: maskImage,
-                    maskURL: maskInfo.url,
-                    score: response.scores?.first,
-                    boundingBox: response.boxes?.first,
-                    timestamp: Date()
-                )
-                lastError = nil
+                    let result = SegmentationResult(
+                        maskImage: maskImage,
+                        maskURL: maskInfo.url,
+                        score: response.scores?.first,
+                        boundingBox: response.boxes?.first,
+                        timestamp: Date()
+                    )
+                    lastResult = result
+                    lastError = nil
+
+                    // Add to in-memory sticker history
+                    stickerHistory.insert(result, at: 0)
+                    // Keep only the most recent stickers in memory
+                    if stickerHistory.count > maxStickerHistory {
+                        stickerHistory = Array(stickerHistory.prefix(maxStickerHistory))
+                    }
+                    print("[SAM3] Sticker added to history. Total: \(stickerHistory.count)")
+
+                    // Auto-save to database if enabled
+                    if autoSaveEnabled, let dataManager = dataManager {
+                        if let savedSticker = dataManager.saveSticker(
+                            image: maskImage,
+                            prompt: currentPrompt,
+                            score: response.scores?.first,
+                            boundingBox: response.boxes?.first
+                        ) {
+                            print("[SAM3] Sticker saved to database: \(savedSticker.id)")
+                        }
+                    }
+                } catch {
+                    print("[SAM3] Failed to download mask: \(error)")
+                    lastError = "Failed to download mask: \(error.localizedDescription)"
+                }
+            } else {
+                print("[SAM3] No masks or image in response")
+                lastError = "No segmentation result in response"
             }
         } catch FalAIError.requestInProgress {
-            // Silently skip if a request is already in progress
+            print("[SAM3] Request already in progress, skipping")
         } catch {
+            print("[SAM3] Error: \(error)")
             lastError = error.localizedDescription
         }
     }

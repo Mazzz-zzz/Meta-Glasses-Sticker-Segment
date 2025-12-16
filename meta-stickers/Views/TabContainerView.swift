@@ -5,9 +5,11 @@
 
 import MWDATCore
 import SwiftUI
+import SwiftData
 
 enum AppTab: String, CaseIterable {
     case stream = "Stream"
+    case library = "Library"
     case settings = "Settings"
 }
 
@@ -16,6 +18,8 @@ struct TabContainerView: View {
     @ObservedObject var wearablesVM: WearablesViewModel
     @StateObject private var streamViewModel: StreamSessionViewModel
     @State private var selectedTab: AppTab = .stream
+    @Environment(\.modelContext) private var modelContext
+    @State private var appSettings: AppSettings?
 
     init(wearables: WearablesInterface, wearablesVM: WearablesViewModel) {
         self.wearables = wearables
@@ -29,12 +33,20 @@ struct TabContainerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Keep both tabs alive
-                StreamingTabContent(viewModel: streamViewModel, wearablesVM: wearablesVM)
+                // Keep all tabs alive
+                StreamingTabContent(
+                    viewModel: streamViewModel,
+                    wearablesVM: wearablesVM,
+                    appSettings: appSettings
+                )
                     .opacity(selectedTab == .stream ? 1 : 0)
                     .allowsHitTesting(selectedTab == .stream)
 
-                SettingsTabContent(viewModel: streamViewModel)
+                StickerLibraryView()
+                    .opacity(selectedTab == .library ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .library)
+
+                SettingsTabContent(viewModel: streamViewModel, appSettings: appSettings)
                     .opacity(selectedTab == .settings ? 1 : 0)
                     .allowsHitTesting(selectedTab == .settings)
             }
@@ -51,6 +63,9 @@ struct TabContainerView: View {
             }
             .toolbarBackground(.visible, for: .navigationBar)
         }
+        .onAppear {
+            setupDataAndSettings()
+        }
         .alert("Error", isPresented: $streamViewModel.showError) {
             Button("OK") {
                 streamViewModel.dismissError()
@@ -60,16 +75,40 @@ struct TabContainerView: View {
         }
         .preferredColorScheme(selectedTab == .stream ? .light : nil)
     }
+
+    private func setupDataAndSettings() {
+        let dataManager = StickerDataManager(modelContext: modelContext)
+        streamViewModel.segmentationManager.setDataManager(dataManager)
+
+        // Load settings
+        let settings = dataManager.getOrCreateSettings()
+        self.appSettings = settings
+
+        // Apply settings to segmentation manager
+        let segManager = streamViewModel.segmentationManager
+        segManager.pollingInterval = settings.pollingInterval
+        segManager.currentPrompt = settings.currentPrompt
+        segManager.autoSaveEnabled = settings.autoSaveStickers
+
+        if settings.segmentationSource == "photoCapture" {
+            segManager.source = .photoCapture
+        } else {
+            segManager.source = .videoFrame
+        }
+
+        print("[Settings] Loaded from TabContainer")
+    }
 }
 
 struct StreamingTabContent: View {
     @ObservedObject var viewModel: StreamSessionViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
+    var appSettings: AppSettings?
 
     var body: some View {
         ZStack {
             if viewModel.isStreaming {
-                StreamView(viewModel: viewModel, wearablesVM: wearablesVM)
+                StreamView(viewModel: viewModel, wearablesVM: wearablesVM, appSettings: appSettings)
             } else {
                 NonStreamView(viewModel: viewModel, wearablesVM: wearablesVM)
             }
@@ -79,6 +118,7 @@ struct StreamingTabContent: View {
 
 struct SettingsTabContent: View {
     @ObservedObject var viewModel: StreamSessionViewModel
+    var appSettings: AppSettings?
     @State private var intervalText: String = ""
 
     private var segmentationManager: SegmentationManager {
@@ -122,6 +162,15 @@ struct SettingsTabContent: View {
                         } else {
                             segmentationManager.stop()
                         }
+                        appSettings?.segmentationEnabled = newValue
+                    }
+                ))
+
+                Toggle("Auto-Save Stickers", isOn: Binding(
+                    get: { segmentationManager.autoSaveEnabled },
+                    set: { newValue in
+                        segmentationManager.autoSaveEnabled = newValue
+                        appSettings?.autoSaveStickers = newValue
                     }
                 ))
 
@@ -148,7 +197,10 @@ struct SettingsTabContent: View {
             Section(header: Text("Image Source")) {
                 Picker("Source", selection: Binding(
                     get: { segmentationManager.source },
-                    set: { segmentationManager.source = $0 }
+                    set: {
+                        segmentationManager.source = $0
+                        appSettings?.segmentationSource = $0.rawValue
+                    }
                 )) {
                     ForEach(SegmentationSource.allCases, id: \.self) { source in
                         Text(source.rawValue).tag(source)
@@ -177,13 +229,17 @@ struct SettingsTabContent: View {
                         .onSubmit {
                             if let interval = Double(intervalText) {
                                 segmentationManager.setPollingInterval(interval)
+                                appSettings?.pollingInterval = interval
                             }
                         }
                 }
 
                 Picker("Quick Select", selection: Binding(
                     get: { segmentationManager.pollingInterval },
-                    set: { segmentationManager.setPollingInterval($0) }
+                    set: {
+                        segmentationManager.setPollingInterval($0)
+                        appSettings?.pollingInterval = $0
+                    }
                 )) {
                     Text("0.5s").tag(0.5)
                     Text("1s").tag(1.0)
@@ -196,7 +252,10 @@ struct SettingsTabContent: View {
             Section(header: Text("Segmentation Prompt")) {
                 TextField("object", text: Binding(
                     get: { segmentationManager.currentPrompt },
-                    set: { segmentationManager.setPrompt($0) }
+                    set: {
+                        segmentationManager.setPrompt($0)
+                        appSettings?.currentPrompt = $0
+                    }
                 ))
 
                 Text("Examples: object, person, car, hand, face")

@@ -8,6 +8,7 @@ import SwiftUI
 struct StreamView: View {
     @ObservedObject var viewModel: StreamSessionViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
+    var appSettings: AppSettings?
     @State private var showSegmentationSettings = false
 
     var body: some View {
@@ -15,84 +16,22 @@ struct StreamView: View {
             Color(.secondarySystemBackground)
                 .ignoresSafeArea()
 
-            if let frame = viewModel.currentVideoFrame {
-                ZStack {
-                    Image(uiImage: frame)
-                        .resizable()
-                        .scaledToFit()
+            VStack(spacing: 0) {
+                // Compact video preview at the top
+                VideoPreviewSection(viewModel: viewModel)
 
-                    // Overlay segmentation mask if available
-                    if viewModel.segmentationManager.isEnabled,
-                       let maskImage = viewModel.segmentationManager.lastResult?.maskImage {
-                        Image(uiImage: maskImage)
-                            .resizable()
-                            .scaledToFit()
-                            .opacity(0.5)
-                    }
-                }
-            } else {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .primary))
-                        .scaleEffect(1.5)
+                // Divider
+                Rectangle()
+                    .fill(Color(.separator))
+                    .frame(height: 1)
 
-                    Text("Waiting for video stream...")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 14))
-                }
-            }
+                // Live Sticker Feed
+                LiveStickerFeedView(segmentationManager: viewModel.segmentationManager)
 
-            VStack {
-                // Top bar with time limit and segmentation status
-                HStack {
-                    // Segmentation status indicator
-                    if viewModel.segmentationManager.isEnabled {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(viewModel.segmentationManager.isProcessing ? Color.orange : Color.green)
-                                .frame(width: 8, height: 8)
-                            Text("SAM3")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.regularMaterial)
-                        .cornerRadius(12)
-                        .padding(.top, 16)
-                        .padding(.leading, 16)
-                    }
-
-                    Spacer()
-
-                    if viewModel.activeTimeLimit.isTimeLimited {
-                        Text(viewModel.remainingTime.formattedCountdown)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.regularMaterial)
-                            .cornerRadius(16)
-                            .padding(.top, 16)
-                            .padding(.trailing, 16)
-                    }
-                }
-
-                // Show error if segmentation fails
-                if let error = viewModel.segmentationManager.lastError {
-                    Text(error)
-                        .font(.system(size: 12))
-                        .foregroundColor(.red)
-                        .padding(8)
-                        .background(.regularMaterial)
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                }
-
-                Spacer()
-
+                // Controls at the bottom
                 ControlsView(viewModel: viewModel, showSegmentationSettings: $showSegmentationSettings)
-                    .padding(.bottom, 32)
+                    .padding(.vertical, 16)
+                    .background(.regularMaterial)
             }
         }
         .sheet(isPresented: $viewModel.showPhotoPreview) {
@@ -103,7 +42,222 @@ struct StreamView: View {
             }
         }
         .sheet(isPresented: $showSegmentationSettings) {
-            SegmentationSettingsView(segmentationManager: viewModel.segmentationManager)
+            SegmentationSettingsView(
+                segmentationManager: viewModel.segmentationManager,
+                appSettings: appSettings
+            )
+        }
+    }
+}
+
+// MARK: - Video Preview Section
+struct VideoPreviewSection: View {
+    @ObservedObject var viewModel: StreamSessionViewModel
+
+    var body: some View {
+        HStack {
+            Spacer()
+            ZStack {
+                Color.black
+
+                if let frame = viewModel.currentVideoFrame {
+                    Image(uiImage: frame)
+                        .resizable()
+                        .scaledToFill()
+                        .clipped()
+                } else {
+                    VStack(spacing: 4) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                        Text("Waiting...")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 10))
+                    }
+                }
+
+                // Overlay indicators
+                VStack {
+                    HStack {
+                        // Segmentation status indicator
+                        if viewModel.segmentationManager.isEnabled {
+                            HStack(spacing: 3) {
+                                Circle()
+                                    .fill(viewModel.segmentationManager.isProcessing ? Color.orange : Color.green)
+                                    .frame(width: 5, height: 5)
+                                Text("SAM3")
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(6)
+                        }
+
+                        Spacer()
+
+                        if viewModel.activeTimeLimit.isTimeLimited {
+                            Text(viewModel.remainingTime.formattedCountdown)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.5))
+                                .cornerRadius(6)
+                        }
+                    }
+                    .padding(6)
+
+                    Spacer()
+
+                    // Show error if segmentation fails
+                    if let error = viewModel.segmentationManager.lastError {
+                        Text(error)
+                            .font(.system(size: 8))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .padding(4)
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(4)
+                            .padding(4)
+                    }
+                }
+            }
+            .frame(width: 160, height: 90) // 16:9 aspect ratio, compact size
+            .cornerRadius(8)
+            Spacer()
+        }
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - Live Sticker Feed
+struct LiveStickerFeedView: View {
+    @ObservedObject var segmentationManager: SegmentationManager
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(segmentationManager.isEnabled ? Color.red : Color.gray)
+                        .frame(width: 8, height: 8)
+                    Text("Live Sticker Feed")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+
+                Spacer()
+
+                if !segmentationManager.stickerHistory.isEmpty {
+                    Button(action: {
+                        segmentationManager.clearHistory()
+                    }) {
+                        Text("Clear")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+
+            if segmentationManager.stickerHistory.isEmpty {
+                // Empty state
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text(segmentationManager.isEnabled ? "Generating stickers..." : "Enable SAM3 to generate stickers")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                // Sticker grid
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(segmentationManager.stickerHistory) { sticker in
+                            StickerItemView(sticker: sticker)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sticker Item
+struct StickerItemView: View {
+    let sticker: SegmentationResult
+    @State private var isAnimating = false
+
+    var body: some View {
+        ZStack {
+            // Checkerboard background to show transparency
+            CheckerboardBackground()
+                .cornerRadius(12)
+
+            if let image = sticker.maskImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(6)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+        .scaleEffect(isAnimating ? 1.0 : 0.5)
+        .opacity(isAnimating ? 1.0 : 0.0)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                isAnimating = true
+            }
+        }
+    }
+}
+
+// MARK: - Checkerboard Background
+struct CheckerboardBackground: View {
+    let squareSize: CGFloat = 8
+
+    var body: some View {
+        GeometryReader { geometry in
+            let columns = Int(ceil(geometry.size.width / squareSize))
+            let rows = Int(ceil(geometry.size.height / squareSize))
+
+            Canvas { context, size in
+                for row in 0..<rows {
+                    for col in 0..<columns {
+                        let isLight = (row + col) % 2 == 0
+                        let rect = CGRect(
+                            x: CGFloat(col) * squareSize,
+                            y: CGFloat(row) * squareSize,
+                            width: squareSize,
+                            height: squareSize
+                        )
+                        context.fill(
+                            Path(rect),
+                            with: .color(isLight ? Color.white : Color.gray.opacity(0.3))
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -145,6 +299,7 @@ struct ControlsView: View {
 
 struct SegmentationSettingsView: View {
     @ObservedObject var segmentationManager: SegmentationManager
+    var appSettings: AppSettings?
     @Environment(\.dismiss) private var dismiss
     @State private var intervalText: String = ""
 
@@ -160,6 +315,7 @@ struct SegmentationSettingsView: View {
                             } else {
                                 segmentationManager.stop()
                             }
+                            appSettings?.segmentationEnabled = newValue
                         }
                     ))
 
@@ -183,6 +339,17 @@ struct SegmentationSettingsView: View {
                     }
                 }
 
+                Section(header: Text("Storage")) {
+                    Toggle("Auto-Save Stickers", isOn: $segmentationManager.autoSaveEnabled)
+                        .onChange(of: segmentationManager.autoSaveEnabled) { _, newValue in
+                            appSettings?.autoSaveStickers = newValue
+                        }
+
+                    Text("Automatically save generated stickers to your library")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("Image Source")) {
                     Picker("Source", selection: $segmentationManager.source) {
                         ForEach(SegmentationSource.allCases, id: \.self) { source in
@@ -190,6 +357,9 @@ struct SegmentationSettingsView: View {
                         }
                     }
                     .pickerStyle(.automatic)
+                    .onChange(of: segmentationManager.source) { _, newValue in
+                        appSettings?.segmentationSource = newValue.rawValue
+                    }
 
                     if segmentationManager.source == .videoFrame {
                         Text("Uses video stream frames. Silent but lower quality.")
@@ -213,6 +383,7 @@ struct SegmentationSettingsView: View {
                             .onSubmit {
                                 if let interval = Double(intervalText) {
                                     segmentationManager.setPollingInterval(interval)
+                                    appSettings?.pollingInterval = interval
                                 }
                             }
                     }
@@ -222,7 +393,10 @@ struct SegmentationSettingsView: View {
                         Spacer()
                         Picker("", selection: Binding(
                             get: { segmentationManager.pollingInterval },
-                            set: { segmentationManager.setPollingInterval($0) }
+                            set: {
+                                segmentationManager.setPollingInterval($0)
+                                appSettings?.pollingInterval = $0
+                            }
                         )) {
                             Text("0.5s").tag(0.5)
                             Text("1s").tag(1.0)
@@ -236,7 +410,10 @@ struct SegmentationSettingsView: View {
                 Section(header: Text("Prompt")) {
                     TextField("object", text: Binding(
                         get: { segmentationManager.currentPrompt },
-                        set: { segmentationManager.setPrompt($0) }
+                        set: {
+                            segmentationManager.setPrompt($0)
+                            appSettings?.currentPrompt = $0
+                        }
                     ))
 
                     Text("Examples: object, person, car, hand, face")
@@ -277,6 +454,7 @@ struct SegmentationSettingsView: View {
                         // Apply any pending interval change
                         if let interval = Double(intervalText), interval > 0 {
                             segmentationManager.setPollingInterval(interval)
+                            appSettings?.pollingInterval = interval
                         }
                         dismiss()
                     }

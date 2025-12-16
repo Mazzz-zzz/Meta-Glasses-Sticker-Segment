@@ -73,10 +73,12 @@ class StreamSessionViewModel: ObservableObject {
     private let deviceSelector: AutoDeviceSelector
 
     private var isSegmentationCapture = false
+    private var dataManager: StickerDataManager?
 
-    init(wearables: WearablesInterface, falAPIKey: String? = nil) {
+    init(wearables: WearablesInterface, falAPIKey: String? = nil, dataManager: StickerDataManager? = nil) {
         self.wearables = wearables
-        self.segmentationManager = SegmentationManager(apiKey: falAPIKey)
+        self.dataManager = dataManager
+        self.segmentationManager = SegmentationManager(apiKey: falAPIKey, dataManager: dataManager)
         self.deviceSelector = AutoDeviceSelector(wearables: wearables)
 
         // Use default values for initial config

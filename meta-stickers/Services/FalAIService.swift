@@ -125,12 +125,26 @@ actor FalAIService {
                 throw FalAIError.networkError(NSError(domain: "FalAI", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
             }
 
-            if httpResponse.statusCode == 200 {
+            print("[FalAI] HTTP Status: \(httpResponse.statusCode)")
+            if let responseStr = String(data: data, encoding: .utf8) {
+                print("[FalAI] Response: \(responseStr.prefix(500))...")
+            }
+
+            if httpResponse.statusCode == 200 || httpResponse.statusCode == 202 {
+                // Check if this is a queue response (has status field indicating IN_QUEUE)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let status = json["status"] as? String,
+                   status == "IN_QUEUE",
+                   let requestId = json["request_id"] as? String {
+                    print("[FalAI] Queued - request_id: \(requestId)")
+                    return try await pollForResult(requestId: requestId)
+                }
+
+                // Otherwise it's a direct result
                 let decoder = JSONDecoder()
-                return try decoder.decode(SAM3Response.self, from: data)
-            } else if httpResponse.statusCode == 202 {
-                let queueResponse = try JSONDecoder().decode(QueueSubmitResponse.self, from: data)
-                return try await pollForResult(requestId: queueResponse.request_id)
+                let result = try decoder.decode(SAM3Response.self, from: data)
+                print("[FalAI] Decoded - masks: \(result.masks?.count ?? 0), image: \(result.image?.url ?? "nil")")
+                return result
             } else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                 throw FalAIError.apiError("HTTP \(httpResponse.statusCode): \(errorMessage)")
@@ -138,6 +152,7 @@ actor FalAIService {
         } catch let error as FalAIError {
             throw error
         } catch let error as DecodingError {
+            print("[FalAI] Decoding error: \(error)")
             throw FalAIError.decodingError(error)
         } catch {
             throw FalAIError.networkError(error)
@@ -145,8 +160,8 @@ actor FalAIService {
     }
 
     private func pollForResult(requestId: String, maxAttempts: Int = 30) async throws -> SAM3Response {
-        let statusURL = "https://queue.fal.run/fal-ai/sam-3/image/requests/\(requestId)/status"
-        let resultURL = "https://queue.fal.run/fal-ai/sam-3/image/requests/\(requestId)"
+        let statusURL = "https://queue.fal.run/fal-ai/sam-3/requests/\(requestId)/status"
+        let resultURL = "https://queue.fal.run/fal-ai/sam-3/requests/\(requestId)"
 
         for attempt in 0..<maxAttempts {
             try await Task.sleep(nanoseconds: 500_000_000) // 500ms
@@ -156,18 +171,26 @@ actor FalAIService {
 
             let (statusData, _) = try await URLSession.shared.data(for: statusRequest)
             let status = try JSONDecoder().decode(QueueStatusResponse.self, from: statusData)
+            print("[FalAI] Poll \(attempt + 1)/\(maxAttempts) - Status: \(status.status)")
 
             if status.status == "COMPLETED" {
                 var resultRequest = URLRequest(url: URL(string: resultURL)!)
                 resultRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
 
                 let (resultData, _) = try await URLSession.shared.data(for: resultRequest)
-                return try JSONDecoder().decode(SAM3Response.self, from: resultData)
+                if let responseStr = String(data: resultData, encoding: .utf8) {
+                    print("[FalAI] Result: \(responseStr.prefix(500))...")
+                }
+                let result = try JSONDecoder().decode(SAM3Response.self, from: resultData)
+                print("[FalAI] Poll complete - masks: \(result.masks?.count ?? 0), image: \(result.image?.url ?? "nil")")
+                return result
             } else if status.status == "FAILED" {
+                print("[FalAI] Request FAILED")
                 throw FalAIError.apiError("Request failed")
             }
         }
 
+        print("[FalAI] Timeout after \(maxAttempts) attempts")
         throw FalAIError.timeout
     }
 
@@ -182,6 +205,70 @@ actor FalAIService {
             throw FalAIError.apiError("Failed to create image from data")
         }
 
-        return image
+        // Process the image: crop to content and ensure transparency
+        return image.cropToOpaqueContent() ?? image
+    }
+}
+
+// MARK: - Image Processing Extensions
+extension UIImage {
+    /// Crops the image to the bounding box of non-transparent pixels
+    func cropToOpaqueContent() -> UIImage? {
+        guard let cgImage = self.cgImage else { return nil }
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        guard let pixelData = context.data else { return nil }
+        let data = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
+
+        var minX = width
+        var minY = height
+        var maxX = 0
+        var maxY = 0
+
+        // Find bounding box of non-transparent pixels
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixelIndex = (y * width + x) * 4
+                let alpha = data[pixelIndex + 3]
+
+                // Consider pixel opaque if alpha > threshold (handle anti-aliasing)
+                if alpha > 10 {
+                    minX = min(minX, x)
+                    minY = min(minY, y)
+                    maxX = max(maxX, x)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+
+        // Check if we found any opaque pixels
+        guard minX < maxX && minY < maxY else { return self }
+
+        // Add small padding
+        let padding = 4
+        minX = max(0, minX - padding)
+        minY = max(0, minY - padding)
+        maxX = min(width - 1, maxX + padding)
+        maxY = min(height - 1, maxY + padding)
+
+        let cropRect = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+
+        guard let croppedCGImage = cgImage.cropping(to: cropRect) else { return self }
+
+        return UIImage(cgImage: croppedCGImage, scale: self.scale, orientation: self.imageOrientation)
     }
 }
