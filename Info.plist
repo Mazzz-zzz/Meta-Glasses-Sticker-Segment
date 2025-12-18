@@ -68,6 +68,8 @@
 	<array>
 		<string>com.meta.ar.wearable</string>
 	</array>
+	<key>FAL_KEY</key>
+	<string>$(FAL_KEY)</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -414,6 +414,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XN9364SF28;
 				ENABLE_PREVIEWS = YES;
+				FAL_KEY = "";
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Auto Stickers";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -442,6 +443,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XN9364SF28;
 				ENABLE_PREVIEWS = YES;
+				FAL_KEY = "";
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Auto Stickers";
 				LD_RUNPATH_SEARCH_PATHS = (
