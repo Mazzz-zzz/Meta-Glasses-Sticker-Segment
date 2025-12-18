@@ -97,7 +97,7 @@ class StickerStyleProcessor {
 
         return processedImage
     }
-
+    
     // MARK: - Style Presets
 
     private func applyStylePreset(to image: UIImage, style: AppSettings.StickerStyle) -> UIImage {
