@@ -1,10 +1,27 @@
+<p align="center">
+  <a href="https://cybergarden.au/showcase/meta-stickers">
+    <img src="screenshots/icon-hero.png" width="600" alt="Meta Stickers">
+  </a>
+</p>
+
 # Meta Stickers
+
+> Built by [Cybergarden](https://cybergarden.au) · [View Showcase](https://cybergarden.au/showcase/meta-stickers)
 
 A SwiftUI iOS application that streams video from Meta AI glasses and performs real-time object segmentation using the SAM3 (Segment Anything Model 3) API.
 
 ## Overview
 
 Meta Stickers connects to Meta Ray-Ban smart glasses via the MWDAT SDK, streams live video, and uses fal.ai's SAM3 API to segment objects in real-time. The segmentation mask is overlaid on the video feed, enabling augmented reality-style object highlighting.
+
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/live-sticker-feed.png" width="200" alt="Live Sticker Feed">
+  <img src="screenshots/style-presets.png" width="200" alt="Style Presets">
+  <img src="screenshots/object-prompts.png" width="200" alt="Object Prompts">
+  <img src="screenshots/sticker-details.png" width="200" alt="Sticker Details">
+</p>
 
 ## Features
 
@@ -52,21 +69,24 @@ cd meta-stickers
 
 ### 2. Configure API Key
 
-Copy the example secrets file and add your fal.ai API key:
+#### Local Development
 
-```bash
-cp Secrets.swift.example meta-stickers/Secrets.swift
-```
+1. Open the project in Xcode
+2. Go to **Product → Scheme → Edit Scheme** (or press `⌘<`)
+3. Select **Run** in the left sidebar
+4. Click the **Arguments** tab
+5. Under **Environment Variables**, find `FAL_KEY`
+6. Replace `INSERT_LOCAL_KEY_HERE` with your fal.ai API key
 
-Edit `meta-stickers/Secrets.swift`:
+#### Xcode Cloud (CI/CD)
 
-```swift
-enum Secrets {
-    static let falAPIKey = "your-fal-ai-api-key-here"
-}
-```
+1. Go to **App Store Connect → Xcode Cloud → Settings**
+2. Under **Shared Environment Variables**, add:
+   - Name: `FAL_KEY`
+   - Value: Your fal.ai API key
+   - Enable **Secret** to keep it redacted
 
-> **Note**: `Secrets.swift` is gitignored and will not be committed.
+The `ci_scripts/ci_post_clone.sh` script automatically injects the key at build time.
 
 ### 3. Build and Run
 
@@ -90,10 +110,10 @@ meta-stickers/
 │   │   └── Components/
 │   │       ├── CircleButton.swift
 │   │       └── CustomButton.swift
-│   ├── Utils/
-│   │   └── Config.swift             # API key configuration
-│   └── Secrets.swift                # API keys (gitignored)
-├── Secrets.swift.example            # Template for secrets
+│   └── Utils/
+│       └── Config.swift             # API key configuration
+├── ci_scripts/
+│   └── ci_post_clone.sh             # Xcode Cloud secret injection
 └── README.md
 ```
 
@@ -111,7 +131,7 @@ meta-stickers/
 - [X] Native SwiftUI tab navigation
 - [X] Settings tab with all configuration options
 - [X] Light mode for Stream tab
-- [X] Secure API key management (gitignored secrets file)
+- [X] Secure API key management (environment variables + Xcode Cloud)
 - [X] Time-limited streaming sessions
 - [X] Device connection status and refresh
 - [X] Error handling and display
@@ -220,3 +240,14 @@ The app uses the `fal-ai/sam-3/image` endpoint:
 - [fal.ai](https://fal.ai) for the SAM3 API hosting
 - [Meta](https://github.com/facebook/meta-wearables-dat-ios) for the MWDAT SDK
 - Segment Anything Model 3 by Meta AI Research
+
+---
+
+<p align="center">
+  Built by <a href="https://cybergarden.au"><strong>Cybergarden</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://cybergarden.au/showcase/meta-stickers">View Showcase</a> ·
+  <a href="https://cybergarden.au">cybergarden.au</a>
+</p>

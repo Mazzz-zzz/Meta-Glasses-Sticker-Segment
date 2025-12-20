@@ -416,7 +416,7 @@
 				ENABLE_PREVIEWS = YES;
 				FAL_KEY = "";
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Auto Stickers";
+				INFOPLIST_KEY_CFBundleDisplayName = "Meta Stickers";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -445,7 +445,7 @@
 				ENABLE_PREVIEWS = YES;
 				FAL_KEY = "";
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Auto Stickers";
+				INFOPLIST_KEY_CFBundleDisplayName = "Meta Stickers";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

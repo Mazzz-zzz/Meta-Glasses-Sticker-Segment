@@ -77,7 +77,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "FAL_KEY"
-            value = "4e13650b-f612-49fa-a614-57ad3d57006d:651aa352e15d8ff08ac7ce1ca352e8e8"
+            value = "INSERT_LOCAL_KEY_HERE"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
